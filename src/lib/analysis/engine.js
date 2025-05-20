@@ -129,7 +129,60 @@ async function analyzeCommits(commits, cliKeywords) {
   return analysisResults;
 }
 
+/**
+ * Analyze hotfix merges and aggregate affected files.
+ * @param {Array<{hash: string, parents: string[], message: string, files: string[]}>} masterMerges
+ * @returns {Object} { hotfixFiles: { [file: string]: number }, hotfixCommits: Array, topHotfixFiles: Array }
+ */
+function analyzeHotfixFiles(masterMerges) {
+  const hotfixFiles = {};
+  const hotfixCommits = [];
+  for (const merge of masterMerges) {
+    // Heuristic: hotfix if message contains 'hotfix', '{fix}', or branch is not develop
+    const msg = merge.message.toLowerCase();
+    const isHotfix = msg.includes('hotfix') || msg.includes('{fix}') || (msg.includes('from') && !msg.includes('from develop'));
+    if (isHotfix && Array.isArray(merge.files)) {
+      hotfixCommits.push(merge);
+      for (const file of merge.files) {
+        if (!hotfixFiles[file]) hotfixFiles[file] = 0;
+        hotfixFiles[file]++;
+      }
+    }
+  }
+  // Top 10 files
+  const topHotfixFiles = Object.entries(hotfixFiles)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([file, count]) => ({ file, count }));
+  return { hotfixFiles, hotfixCommits, topHotfixFiles };
+}
+
+/**
+ * Analyze and report files most frequently affected by hotfix merges into master.
+ * @param {string} targetBranch - The branch to analyze (default: 'master')
+ * @returns {Promise<{ topHotfixFiles: Array, hotfixFiles: Object, hotfixCommits: Array }>} 
+ */
+async function analyzeHotfixFilesAuto(targetBranch = 'remotes/origin/master') {
+  const { getClassifiedMerges } = require('../git/log');
+  const merges = await getClassifiedMerges(targetBranch);
+  const hotfixMerges = merges.filter(m => m.type === 'hotfix');
+  const hotfixFiles = {};
+  for (const merge of hotfixMerges) {
+    for (const file of merge.files) {
+      if (!hotfixFiles[file]) hotfixFiles[file] = 0;
+      hotfixFiles[file]++;
+    }
+  }
+  const topHotfixFiles = Object.entries(hotfixFiles)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([file, count]) => ({ file, count }));
+  return { topHotfixFiles, hotfixFiles, hotfixCommits: hotfixMerges };
+}
+
 module.exports = {
   analyzeCommits,
+  analyzeHotfixFiles,
+  analyzeHotfixFilesAuto,
 };
 
