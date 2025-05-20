@@ -49,6 +49,12 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
       );
       fixRatePieChartRelPath = path.basename(chartPath);
     }
+    let topFixFilesChartRelPath = null;
+    if (analysisResults.topFixFiles && analysisResults.topFixFiles.length > 0) {
+      const { generateTopFilesChart } = require('./charts/topFilesChart');
+      const chartPath = await generateTopFilesChart(analysisResults.topFixFiles, outputDir);
+      topFixFilesChartRelPath = path.basename(chartPath);
+    }
 
     // Read the Handlebars template
     const templatePath = path.join(__dirname, 'templates', 'html', 'report.hbs');
@@ -79,6 +85,7 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
     processedData.topFilesChart = topFilesChartRelPath;
     processedData.fixTrendChart = fixTrendChartRelPath;
     processedData.fixRatePieChart = fixRatePieChartRelPath;
+    processedData.topFixFilesChart = topFixFilesChartRelPath;
 
     // Apply data to the template
     const htmlContent = compiledTemplate({ analysisResults: processedData });

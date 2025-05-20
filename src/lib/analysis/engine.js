@@ -36,10 +36,12 @@ async function analyzeCommits(commits, cliKeywords) {
     commitsWithKeywords: [],
     keywordCounts: {},
     commitFrequency: {},
-    fixTrend: {}, // { 'YYYY-MM-DD': fix/hotfix count }
-    fileChangeCounts: {}, // { filename: count }
-    defectFixRate: 0, // fix/hotfix commits / total
-    topFiles: [] // [{ file, count }]
+    fixTrend: {},
+    fileChangeCounts: {},
+    defectFixRate: 0,
+    topFiles: [],
+    fixFileCounts: {}, // { filename: count } for fix/hotfix commits
+    topFixFiles: [] // [{ file, count }]
   };
 
   // Initialize keywordCounts for all effective keywords
@@ -103,11 +105,23 @@ async function analyzeCommits(commits, cliKeywords) {
         analysisResults.fileChangeCounts[file]++;
       });
     }
+    // Track files affected by fix/hotfix commits
+    if (foundInMessage.length > 0 && commit.files && Array.isArray(commit.files)) {
+      commit.files.forEach(file => {
+        if (!analysisResults.fixFileCounts[file]) analysisResults.fixFileCounts[file] = 0;
+        analysisResults.fixFileCounts[file]++;
+      });
+    }
   }
   // Calculate defect-fix rate
   analysisResults.defectFixRate = analysisResults.totalCommits > 0 ? (analysisResults.commitsWithKeywords.length / analysisResults.totalCommits) : 0;
-  // Top 10 files
+  // Top 10 files for all commits
   analysisResults.topFiles = Object.entries(analysisResults.fileChangeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([file, count]) => ({ file, count }));
+  // Top 10 files for fix/hotfix commits
+  analysisResults.topFixFiles = Object.entries(analysisResults.fixFileCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([file, count]) => ({ file, count }));

@@ -36,7 +36,22 @@ async function getCommits(filters = {}) {
     // For now, we pass only the format options.
     // Filtering based on the `filters` parameter will be implemented in a future step.
     const log = await git.log(gitLogOptions);
-    return log.all || []; // log.all contains the array of commit objects
+    const commits = log.all || [];
+    // For each commit, fetch the list of changed files
+    for (const commit of commits) {
+      try {
+        // Get files changed in this commit (excluding merge commits)
+        const showResult = await git.raw([
+          'show', '--pretty=format:', '--name-only', commit.hash
+        ]);
+        // Split by newlines, filter out empty lines
+        const files = showResult.split('\n').map(f => f.trim()).filter(f => f.length > 0);
+        commit.files = files;
+      } catch (err) {
+        commit.files = [];
+      }
+    }
+    return commits;
   } catch (error) {
     // console.error('Failed to retrieve commits:', error); // It's good practice to log errors, but per plan step this might be silent for now
     return [];

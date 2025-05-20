@@ -46,6 +46,12 @@
             <img src="{{analysisResults.fixRatePieChart}}" alt="Defect-Fix Rate Pie Chart" style="max-width:400px;height:auto;" />
         </div>
     {{/if}}
+    {{#if analysisResults.topFixFilesChart}}
+        <div class="chart-section">
+            <h2>Top Files Affected by Fix/Hotfix Commits</h2>
+            <img src="{{analysisResults.topFixFilesChart}}" alt="Top Fix/Hotfix Files Chart" style="max-width:100%;height:auto;" />
+        </div>
+    {{/if}}
 
     {{#if analysisResults.commitsWithKeywords.length}}
         <h2>Keyword Counts</h2>
@@ -91,6 +97,14 @@
         </ul>
         <h2>Defect-Fix Rate</h2>
         <p>{{analysisResults.commitsWithKeywords.length}} / {{analysisResults.totalCommits}} ({{analysisResults.defectFixRate}})</p>
+    </div>
+    <div class="summary">
+        <h2>Top 10 Files Affected by Fix/Hotfix Commits</h2>
+        <ul>
+            {{#each analysisResults.topFixFiles}}
+                <li>{{this.file}}: {{this.count}}</li>
+            {{/each}}
+        </ul>
     </div>
 </body>
 </html>
