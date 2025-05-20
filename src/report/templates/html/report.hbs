@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Repository Analysis Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .summary { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Git Repository Analysis Report</h1>
+
+    <div class="summary">
+        <h2>Summary</h2>
+        <p>Total Commits Analyzed: {{analysisResults.totalCommits}}</p>
+        <p>Commits with Keywords: {{analysisResults.commitsWithKeywords.length}}</p>
+    </div>
+
+    {{#if analysisResults.commitFrequencyChart}}
+        <div class="chart-section">
+            <h2>Commit Frequency Chart</h2>
+            <img src="{{analysisResults.commitFrequencyChart}}" alt="Commit Frequency Chart" style="max-width:100%;height:auto;" />
+        </div>
+    {{/if}}
+    {{#if analysisResults.topFilesChart}}
+        <div class="chart-section">
+            <h2>Top Changed Files</h2>
+            <img src="{{analysisResults.topFilesChart}}" alt="Top Changed Files Chart" style="max-width:100%;height:auto;" />
+        </div>
+    {{/if}}
+    {{#if analysisResults.fixTrendChart}}
+        <div class="chart-section">
+            <h2>Fix/Hotfix Commit Trend</h2>
+            <img src="{{analysisResults.fixTrendChart}}" alt="Fix/Hotfix Commit Trend Chart" style="max-width:100%;height:auto;" />
+        </div>
+    {{/if}}
+    {{#if analysisResults.fixRatePieChart}}
+        <div class="chart-section">
+            <h2>Defect-Fix Rate</h2>
+            <img src="{{analysisResults.fixRatePieChart}}" alt="Defect-Fix Rate Pie Chart" style="max-width:400px;height:auto;" />
+        </div>
+    {{/if}}
+
+    {{#if analysisResults.commitsWithKeywords.length}}
+        <h2>Keyword Counts</h2>
+        <ul>
+            {{#each analysisResults.keywordCounts}}
+                <li>{{@key}}: {{this}}</li>
+            {{/each}}
+        </ul>
+
+        <h2>Commits Containing Keywords</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Hash</th>
+                    <th>Author</th>
+                    <th>Date</th>
+                    <th>Message</th>
+                    <th>Keywords</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each analysisResults.commitsWithKeywords}}
+                <tr>
+                    <td>{{this.hash}}</td>
+                    <td>{{this.author}}</td>
+                    <td>{{this.date}}</td>
+                    <td>{{this.message}}</td>
+                    <td>{{this.keywordsFoundString}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    {{else}}
+        <p>No commits found matching the specified keywords.</p>
+    {{/if}}
+
+    <div class="summary">
+        <h2>Top 10 Changed Files</h2>
+        <ul>
+            {{#each analysisResults.topFiles}}
+                <li>{{this.file}}: {{this.count}}</li>
+            {{/each}}
+        </ul>
+        <h2>Defect-Fix Rate</h2>
+        <p>{{analysisResults.commitsWithKeywords.length}} / {{analysisResults.totalCommits}} ({{analysisResults.defectFixRate}})</p>
+    </div>
+</body>
+</html>
+
