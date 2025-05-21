@@ -33,13 +33,16 @@ program
 
     console.log('Analyzing git repository with options:', options); // Can be removed if too noisy
     const commits = await getCommits(options);
-    console.log('DEBUG: First 3 commits:', commits.slice(0, 3));
+    // console.log('DEBUG: First 3 commits:', commits.slice(0, 3));
     const analysisResults = await analyzeCommits(commits, options.keywords);
-    console.log('DEBUG: analysisResults.commitFrequency:', analysisResults.commitFrequency);
+    // console.log('DEBUG: analysisResults.commitFrequency:', analysisResults.commitFrequency);
 
     generateConsoleReport(analysisResults, options);
 
     if (options.format === 'html') {
+      // Also analyze hotfix files and add to report data
+      const { topHotfixFiles } = await analyzeHotfixFilesAuto('remotes/origin/master');
+      analysisResults.topHotfixFiles = topHotfixFiles;
       await generateHtmlReport(analysisResults, options);
     } else if (options.format === 'csv') {
       await generateCsvReport(analysisResults, options);
@@ -58,13 +61,13 @@ program
     const branch = options.branch || 'remotes/origin/master';
     console.log(`Analyzing hotfix merges into ${branch}...`);
     const { topHotfixFiles, hotfixFiles, hotfixCommits } = await analyzeHotfixFilesAuto(branch);
-    console.log('\nDEBUG: Hotfix merge messages and files:');
+    // console.log('\nDEBUG: Hotfix merge messages and files:');
     hotfixCommits.forEach((merge, i) => {
-      console.log(`\n${i + 1}. ${merge.hash} | ${merge.message}`);
+      // console.log(`\n${i + 1}. ${merge.hash} | ${merge.message}`);
       if (merge.files && merge.files.length > 0) {
-        console.log('   Files:', merge.files.join(', '));
+        // console.log('   Files:', merge.files.join(', '));
       } else {
-        console.log('   Files: (none)');
+        // console.log('   Files: (none)');
       }
     });
     console.log('\nTop 10 files affected by hotfix merges:');

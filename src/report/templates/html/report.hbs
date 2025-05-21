@@ -52,6 +52,16 @@
             <img src="{{analysisResults.topFixFilesChart}}" alt="Top Fix/Hotfix Files Chart" style="max-width:100%;height:auto;" />
         </div>
     {{/if}}
+    {{#if analysisResults.topHotfixFiles}}
+        <div class="chart-section">
+            <h2>Top Files Affected by Hotfix Merges</h2>
+            <ul>
+                {{#each analysisResults.topHotfixFiles}}
+                    <li>{{this.file}}: {{this.count}}</li>
+                {{/each}}
+            </ul>
+        </div>
+    {{/if}}
 
     {{#if analysisResults.commitsWithKeywords.length}}
         <h2>Keyword Counts</h2>
