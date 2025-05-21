@@ -42,11 +42,19 @@ describe('analyzeCommits', () => {
     const result = await analyzeCommits([], '');
     const expectedKeywordCounts = {};
     DEFAULT_KEYWORDS.forEach(kw => expectedKeywordCounts[kw] = 0);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       totalCommits: 0,
       commitsWithKeywords: [],
       keywordCounts: expectedKeywordCounts,
     });
+    // Check that all other keys are present and empty/zero as well
+    expect(result.commitFrequency).toEqual({});
+    expect(result.fixTrend).toEqual({});
+    expect(result.fileChangeCounts).toEqual({});
+    expect(result.fixFileCounts).toEqual({});
+    expect(result.topFiles).toEqual([]);
+    expect(result.topFixFiles).toEqual([]);
+    expect(result.defectFixRate).toBe(0);
   });
 
   it('should handle commits with no matching keywords (using default keywords)', async () => {

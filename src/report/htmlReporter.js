@@ -19,17 +19,14 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
   const outputPath = path.join(outputDir, reportFilename);
 
   try {
-    // Ensure output directory exists
     await fs.mkdir(outputDir, { recursive: true });
 
-    // Generate commit frequency chart if data is available
+    // Generate charts
     let chartImageRelPath = null;
     if (analysisResults.commitFrequency) {
       const chartPath = await generateCommitFrequencyChart(analysisResults.commitFrequency, outputDir);
-      chartImageRelPath = path.basename(chartPath); // relative to outputDir
+      chartImageRelPath = path.basename(chartPath);
     }
-
-    // Generate additional charts
     let topFilesChartRelPath = null;
     if (analysisResults.topFiles && analysisResults.topFiles.length > 0) {
       const chartPath = await generateTopFilesChart(analysisResults.topFiles, outputDir);
@@ -56,17 +53,14 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
       topFixFilesChartRelPath = path.basename(chartPath);
     }
 
-    // Read the Handlebars template
-    const templatePath = path.join(__dirname, 'templates', 'html', 'report.hbs');
+    // Use improved template
+    const templatePath = path.join(__dirname, 'templates', 'html', 'improved-report-template.html');
     const templateContent = await fs.readFile(templatePath, 'utf-8');
+    
+    // Register Handlebars helpers
+    handlebars.registerHelper('gt', (a, b) => a > b);
 
-    // Compile the template
     const compiledTemplate = handlebars.compile(templateContent);
-    // Create a deep copy of analysisResults to avoid modifying the original object
-    // A simple structuredClone is available in Node.js v17+
-    // For broader compatibility, a common approach is JSON.parse(JSON.stringify(obj))
-    // but be aware of its limitations (e.g., loses Date objects, functions, undefined).
-    // Given our data structure, this should be acceptable.
     const processedData = JSON.parse(JSON.stringify(analysisResults));
 
     // Pre-process keywordsFound for the template
@@ -80,6 +74,52 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
       });
     }
 
+    // Compute uniqueFilesCount
+    processedData.uniqueFilesCount = processedData.fileChangeCounts ? Object.keys(processedData.fileChangeCounts).length : 0;
+
+    // Compute hotfixPercentage
+    const hotfixCommits = processedData.commitsWithKeywords ? processedData.commitsWithKeywords.filter(c => c.keywordsFound && c.keywordsFound.includes('hotfix')) : [];
+    processedData.hotfixPercentage = processedData.commitsWithKeywords && processedData.commitsWithKeywords.length > 0
+      ? (hotfixCommits.length / processedData.commitsWithKeywords.length) * 100
+      : 0;
+
+    // Compute hotspotConcentration (percentage of fixes in the top file)
+    if (processedData.topFixFiles && processedData.topFixFiles.length > 0 && processedData.commitsWithKeywords && processedData.commitsWithKeywords.length > 0) {
+      const topFileFixes = processedData.topFixFiles[0].count;
+      processedData.hotspotConcentration = (topFileFixes / processedData.commitsWithKeywords.length) * 100;
+    } else {
+      processedData.hotspotConcentration = 0;
+    }
+
+    // Compute commitConsistency (stddev/mean of daily commit counts)
+    if (processedData.commitFrequency && Object.values(processedData.commitFrequency).length > 1) {
+      const counts = Object.values(processedData.commitFrequency);
+      const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+      const variance = counts.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (counts.length - 1);
+      const stddev = Math.sqrt(variance);
+      processedData.commitConsistency = mean > 0 ? (1 - (stddev / mean)) : 0;
+    } else {
+      processedData.commitConsistency = 0;
+    }
+
+    // Compute keywordPercentages for progress bars
+    if (processedData.keywordCounts && processedData.commitsWithKeywords && processedData.commitsWithKeywords.length > 0) {
+      processedData.keywordPercentages = {};
+      const total = Object.values(processedData.keywordCounts).reduce((a, b) => a + b, 0);
+      for (const [kw, count] of Object.entries(processedData.keywordCounts)) {
+        processedData.keywordPercentages[kw] = total > 0 ? (count / total) * 100 : 0;
+      }
+    } else {
+      processedData.keywordPercentages = {};
+    }
+
+    // Precompute percent/rounded values for template (no inline math in Handlebars!)
+    processedData.defectFixRatePercent = Number((processedData.defectFixRate * 100).toFixed(1));
+    processedData.codeStabilityPercent = Number((100 - processedData.defectFixRate * 100).toFixed(1));
+    processedData.hotfixPercentageRounded = Number(processedData.hotfixPercentage.toFixed(1));
+    processedData.hotspotConcentrationRounded = Number(processedData.hotspotConcentration.toFixed(1));
+    processedData.commitConsistencyRounded = Number(processedData.commitConsistency.toFixed(2));
+
     // Add chart image paths for the template
     processedData.commitFrequencyChart = chartImageRelPath;
     processedData.topFilesChart = topFilesChartRelPath;
@@ -87,16 +127,24 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
     processedData.fixRatePieChart = fixRatePieChartRelPath;
     processedData.topFixFilesChart = topFixFilesChartRelPath;
 
+    // Add topHotfixFiles if available
+    if (analysisResults.topHotfixFiles) {
+      processedData.topHotfixFiles = analysisResults.topHotfixFiles;
+    }
+
+    // Add repoName if available
+    if (cliOptions.repoName) {
+      processedData.repoName = cliOptions.repoName;
+    } else {
+      processedData.repoName = '';
+    }
+
     // Apply data to the template
-    const htmlContent = compiledTemplate({ analysisResults: processedData });
-    
-    // Write the HTML content to the output file
+    const htmlContent = compiledTemplate({ analysisResults: processedData, ...processedData });
     await fs.writeFile(outputPath, htmlContent, 'utf-8');
     console.log(`HTML report saved to ${outputPath}`);
-
   } catch (error) {
     console.error(`Error generating HTML report: ${error.message}`);
-    // console.error(error.stack); // For more detailed debugging if needed
   }
 }
 
