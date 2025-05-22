@@ -1,5 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
+const { log } = require('../lib/utils/logger');
 
 /**
  * Escapes a field for CSV format.
@@ -37,22 +38,24 @@ async function generateCsvReport(analysisResults, cliOptions = {}) {
   try {
     await fs.mkdir(outputDir, { recursive: true });
 
-    const csvHeader = 'Hash,Author,Date,Message,KeywordsFound';
+    const csvHeader = 'Hash,Author,Date,Message,KeywordsFound,CommitFrequency,DefectFixRate';
     const rows = analysisResults.commitsWithKeywords.map(commit => {
       const keywords = commit.keywordsFound.join('; '); // Join keywords with semicolon or other suitable delimiter
       return [
         escapeCsvField(commit.hash),
         escapeCsvField(commit.author),
         escapeCsvField(commit.date),
-        escapeCsvField(commit.message),
+        escapeCsvField(commit.subject), // Use 'subject' instead of 'message'
         escapeCsvField(keywords),
+        escapeCsvField(commit.commitFrequency), // Added commit frequency
+        escapeCsvField(commit.defectFixRate),   // Added defect-fix rate
       ].join(',');
     });
 
     const csvContent = [csvHeader, ...rows].join('\n');
 
     await fs.writeFile(outputPath, csvContent, 'utf-8');
-    console.log(`CSV report saved to ${outputPath}`);
+    log(`CSV report saved to ${outputPath}`);
 
   } catch (error) {
     console.error(`Error generating CSV report: ${error.message}`);

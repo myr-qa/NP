@@ -439,14 +439,11 @@
                                         <td>{{this.count}}</td>
                                         <td>
                                             {{#if (gt this.count 10)}}
-                                                <div class="text-danger fw-bold mb-1">High</div>
-                                                <div class="risk-indicator"><div class="risk-level risk-high"></div></div>
+                                              <div class="text-danger fw-bold mb-1">High</div>
                                             {{else if (gt this.count 5)}}
-                                                <div class="text-warning fw-bold mb-1">Medium</div>
-                                                <div class="risk-indicator"><div class="risk-level risk-medium"></div></div>
+                                              <div class="text-warning fw-bold mb-1">Medium</div>
                                             {{else}}
-                                                <div class="text-success fw-bold mb-1">Low</div>
-                                                <div class="risk-indicator"><div class="risk-level risk-low"></div></div>
+                                              <div class="text-success fw-bold mb-1">Low</div>
                                             {{/if}}
                                         </td>
                                     </tr>
@@ -488,7 +485,31 @@
             </div>
         </div>
         
-        <!-- Fix/Hotfix Commits Section -->
+        <!-- Commit Frequency Section -->
+        <h2 class="section-header"><i class="bi bi-bar-chart"></i> Commit Frequency</h2>
+        <div class="chart-container">
+            {{#if analysisResults.commitFrequency}}
+                <div id="commit-frequency-chart">
+                    <img src="{{analysisResults.commitFrequencyChart}}" alt="Commit Frequency Chart" style="max-width:100%;height:auto;" />
+                </div>
+            {{else}}
+                <div class="alert alert-info">No commit frequency data available</div>
+            {{/if}}
+        </div>
+
+        <!-- Defect-Fix Rate Section -->
+        <h2 class="section-header"><i class="bi bi-pie-chart"></i> Defect-Fix Rate</h2>
+        <div class="chart-container">
+            {{#if analysisResults.fixRatePieChart}}
+                <div id="fix-rate-pie-chart">
+                    <img src="{{analysisResults.fixRatePieChart}}" alt="Defect-Fix Rate Pie Chart" style="max-width:100%;height:auto;" />
+                </div>
+            {{else}}
+                <div class="alert alert-info">No defect-fix rate data available</div>
+            {{/if}}
+        </div>
+
+        <!-- Updated Fix/Hotfix Commits Section -->
         <h2 class="section-header"><i class="bi bi-list-check"></i> Fix/Hotfix Commits</h2>
         <div class="chart-container">
             <div class="table-container">
@@ -497,7 +518,7 @@
                         <tr>
                             <th>Date</th>
                             <th>Author</th>
-                            <th>Message</th>
+                            <th>Subject</th>
                             <th>Keywords</th>
                         </tr>
                     </thead>
@@ -506,7 +527,7 @@
                             <tr>
                                 <td>{{this.date}}</td>
                                 <td>{{this.author}}</td>
-                                <td>{{this.message}}</td>
+                                <td>{{this.subject}}</td>
                                 <td>
                                     {{#each this.keywordsFound}}
                                         <span class="keyword-tag keyword-{{this}}">{{this}}</span>
@@ -598,3 +619,4 @@
     </script>
 </body>
 </html>
+    

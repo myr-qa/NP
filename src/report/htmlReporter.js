@@ -114,11 +114,40 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
     }
 
     // Precompute percent/rounded values for template (no inline math in Handlebars!)
-    processedData.defectFixRatePercent = Number((processedData.defectFixRate * 100).toFixed(1));
-    processedData.codeStabilityPercent = Number((100 - processedData.defectFixRate * 100).toFixed(1));
+    // Handle defectFixRate and codeStability
+    if (typeof processedData.defectFixRate === 'number') {
+      processedData.defectFixRatePercent = Number(processedData.defectFixRate.toFixed(1));
+      processedData.codeStabilityPercent = Number((100 - processedData.defectFixRate).toFixed(1));
+    } else {
+      processedData.defectFixRatePercent = 0;
+      processedData.codeStabilityPercent = 100;
+    }
+
+    // Handle hotfix percentage
+    if (processedData.commitsWithKeywords && processedData.commitsWithKeywords.length > 0) {
+      const hotfixCount = processedData.keywordCounts?.hotfix || 0;
+      const totalFixCount = processedData.commitsWithKeywords.length;
+      processedData.hotfixPercentage = (hotfixCount / totalFixCount) * 100;
+    } else {
+      processedData.hotfixPercentage = 0;
+    }
     processedData.hotfixPercentageRounded = Number(processedData.hotfixPercentage.toFixed(1));
+
+    // Handle hotspot concentration
+    if (processedData.commitsWithKeywords?.length > 0 && processedData.topFixFiles?.length > 0) {
+      const topFileCount = processedData.topFixFiles[0].count;
+      processedData.hotspotConcentration = (topFileCount / processedData.commitsWithKeywords.length) * 100;
+    } else {
+      processedData.hotspotConcentration = 0;
+    }
     processedData.hotspotConcentrationRounded = Number(processedData.hotspotConcentration.toFixed(1));
-    processedData.commitConsistencyRounded = Number(processedData.commitConsistency.toFixed(2));
+
+    // Handle commit consistency
+    if (typeof processedData.commitConsistency === 'number') {
+      processedData.commitConsistencyRounded = Number(processedData.commitConsistency.toFixed(2));
+    } else {
+      processedData.commitConsistencyRounded = 0;
+    }
 
     // Add chart image paths for the template
     processedData.commitFrequencyChart = chartImageRelPath;

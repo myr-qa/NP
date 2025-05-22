@@ -1,4 +1,6 @@
+const { execSync } = require('child_process');
 const { findKeywordsInMessage } = require('./keywords');
+const { log } = require('../utils/logger');
 
 const DEFAULT_KEYWORDS = ['fix', 'hotfix', 'bugfix', 'resolve', 'patch'];
 
@@ -16,117 +18,107 @@ const DEFAULT_KEYWORDS = ['fix', 'hotfix', 'bugfix', 'resolve', 'patch'];
  *                              keywordCounts: object
  *                            }
  */
-async function analyzeCommits(commits, cliKeywords) {
+async function analyzeCommits(commits) {
+  const analysisResults = {
+    totalCommits: Array.isArray(commits) ? commits.length : 0,
+    commitsWithKeywords: [],
+    keywordCounts: { fix: 0, hotfix: 0, bugfix: 0, resolve: 0, patch: 0 },
+    topFixFiles: {},
+    fixTrend: {},
+    dailyCommitCounts: {},
+    defectFixRate: 0,
+  };
+
+  // Ensure commits is an array
   if (!Array.isArray(commits)) {
-    console.error('Error: Expected an array of commits for analysis.');
+    log('DEBUG: Invalid commits input:', commits);
     return {
-      totalCommits: 0,
-      commitsWithKeywords: [],
-      keywordCounts: {},
+      ...analysisResults,
+      topFixFiles: [],
     };
   }
 
-  let effectiveKeywords = DEFAULT_KEYWORDS;
-  if (cliKeywords && typeof cliKeywords === 'string' && cliKeywords.trim() !== '') {
-    effectiveKeywords = cliKeywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
-  }
-
-  const analysisResults = {
-    totalCommits: commits.length,
-    commitsWithKeywords: [],
-    keywordCounts: {},
-    commitFrequency: {},
-    fixTrend: {},
-    fileChangeCounts: {},
-    defectFixRate: 0,
-    topFiles: [],
-    fixFileCounts: {}, // { filename: count } for fix/hotfix commits
-    topFixFiles: [] // [{ file, count }]
+  const isWordMatch = (text, word) => {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(text);
   };
 
-  // Initialize keywordCounts for all effective keywords
-  effectiveKeywords.forEach(kw => {
-    analysisResults.keywordCounts[kw] = 0;
-  });
-
   for (const commit of commits) {
-    // Assuming commit object has a 'subject' or 'message' field for the commit message.
-    // Based on previous log.js setup, it should be 'subject'.
-    const messageToAnalyze = commit.subject || commit.message || '';
-    const foundInMessage = findKeywordsInMessage(messageToAnalyze, effectiveKeywords);
+    // Use commit.message as fallback if subject is missing
+    const commitSubject = commit.subject || commit.message || '';
 
-    if (foundInMessage.length > 0) {
-      analysisResults.commitsWithKeywords.push({
-        hash: commit.hash,
-        message: messageToAnalyze, // Storing the original message used for analysis
-        author: commit.author_name,
-        date: commit.date,
-        keywordsFound: foundInMessage,
-      });
+    const isFix = isFixCommit(commitSubject);
 
-      foundInMessage.forEach(keyword => {
-        // Ensure we are incrementing based on the original-case keyword from effectiveKeywords
-        // if it was found. findKeywordsInMessage returns original case keywords.
-        if (analysisResults.keywordCounts.hasOwnProperty(keyword)) {
-          analysisResults.keywordCounts[keyword]++;
-        } else {
-          // This case might happen if a keyword was found that wasn't in the initial
-          // effectiveKeywords list (e.g., if findKeywordsInMessage logic was broader).
-          // For now, we assume findKeywordsInMessage only returns keywords from the provided list.
-          // If a keyword is found that's not in the list, it implies an issue or a need to
-          // add it dynamically, but for simplicity, we only count pre-defined effective keywords.
+    if (isFix) {
+      analysisResults.commitsWithKeywords.push(commit);
+
+      // Count keywords using word boundary matching
+      const foundKeywords = new Set();
+      for (const keyword of Object.keys(analysisResults.keywordCounts)) {
+        if (isWordMatch(commitSubject, keyword)) {
+          if (!foundKeywords.has(keyword)) {
+            analysisResults.keywordCounts[keyword]++;
+            foundKeywords.add(keyword);
+          }
         }
-      });
-    }
-
-    // Count commit frequency by date (YYYY-MM-DD)
-    if (commit.date) {
-      // Try to parse the date string to a Date object
-      const dateObj = new Date(commit.date);
-      // If parsing fails, fallback to the original string
-      const dateOnly = isNaN(dateObj) ? commit.date : dateObj.toISOString().slice(0, 10);
-      if (!analysisResults.commitFrequency[dateOnly]) {
-        analysisResults.commitFrequency[dateOnly] = 0;
       }
-      analysisResults.commitFrequency[dateOnly]++;
+
+      // Populate keywordsFound for each commit
+      commit.keywordsFound = Array.from(foundKeywords);
+
+      // Track fix trend by date
+      const date = commit.date && !isNaN(new Date(commit.date))
+        ? new Date(commit.date).toISOString().split('T')[0]
+        : 'unknown';
+      analysisResults.fixTrend[date] = (analysisResults.fixTrend[date] || 0) + 1;
+
+      // Count affected files
+      for (const file of commit.files || []) {
+        analysisResults.topFixFiles[file] = (analysisResults.topFixFiles[file] || 0) + 1;
+      }
     }
 
-    // Track fix/hotfix trend by date
-    if (foundInMessage.length > 0 && commit.date) {
-      const dateObj = new Date(commit.date);
-      const dateOnly = isNaN(dateObj) ? commit.date : dateObj.toISOString().slice(0, 10);
-      if (!analysisResults.fixTrend[dateOnly]) analysisResults.fixTrend[dateOnly] = 0;
-      analysisResults.fixTrend[dateOnly]++;
-    }
-    // Track file changes if commit.files exists (extendable for future)
-    if (commit.files && Array.isArray(commit.files)) {
-      commit.files.forEach(file => {
-        if (!analysisResults.fileChangeCounts[file]) analysisResults.fileChangeCounts[file] = 0;
-        analysisResults.fileChangeCounts[file]++;
-      });
-    }
-    // Track files affected by fix/hotfix commits
-    if (foundInMessage.length > 0 && commit.files && Array.isArray(commit.files)) {
-      commit.files.forEach(file => {
-        if (!analysisResults.fixFileCounts[file]) analysisResults.fixFileCounts[file] = 0;
-        analysisResults.fixFileCounts[file]++;
-      });
-    }
+    // Count daily commits
+    const commitDate = commit.date && !isNaN(new Date(commit.date))
+      ? new Date(commit.date).toISOString().split('T')[0]
+      : 'unknown';
+    analysisResults.dailyCommitCounts[commitDate] = (analysisResults.dailyCommitCounts[commitDate] || 0) + 1;
   }
+
+  // Convert topFixFiles to sorted array
+  analysisResults.topFixFiles = Object.entries(analysisResults.topFixFiles)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([file, count]) => ({ file, count }));
+
   // Calculate defect-fix rate
-  analysisResults.defectFixRate = analysisResults.totalCommits > 0 ? (analysisResults.commitsWithKeywords.length / analysisResults.totalCommits) : 0;
-  // Top 10 files for all commits
-  analysisResults.topFiles = Object.entries(analysisResults.fileChangeCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([file, count]) => ({ file, count }));
-  // Top 10 files for fix/hotfix commits
-  analysisResults.topFixFiles = Object.entries(analysisResults.fixFileCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([file, count]) => ({ file, count }));
+  const totalFixCommits = analysisResults.commitsWithKeywords.length;
+  analysisResults.defectFixRate = totalFixCommits > 0
+    ? (totalFixCommits / analysisResults.totalCommits) * 100
+    : 0;
 
   return analysisResults;
+}
+
+function isFixCommit(message) {
+  if (!message) {
+    log('DEBUG: Commit message is undefined or null:', message);
+    return false;
+  }
+
+  const isWordMatch = (text, word) => {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(text);
+  };
+
+  const lowerMessage = message.toLowerCase();
+  return (
+    isWordMatch(lowerMessage, 'fix') ||
+    isWordMatch(lowerMessage, 'hotfix') ||
+    isWordMatch(lowerMessage, 'bugfix') ||
+    isWordMatch(lowerMessage, 'resolve') ||
+    isWordMatch(lowerMessage, 'patch')
+  );
 }
 
 /**
