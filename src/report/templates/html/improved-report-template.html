@@ -249,21 +249,21 @@
         
         <!-- Key Metrics Section -->
         <div class="row">
-            <div class="col-md-3 col-sm-6">
+            <div class="col-md-4 col-sm-6">
                 <div class="stat-card text-center">
                     <i class="bi bi-git text-primary" style="font-size: 2rem;"></i>
                     <div class="stat-value text-primary">{{analysisResults.totalCommits}}</div>
                     <div class="stat-label">Total Commits</div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6">
+            <div class="col-md-4 col-sm-6">
                 <div class="stat-card text-center">
                     <i class="bi bi-bug text-danger" style="font-size: 2rem;"></i>
                     <div class="stat-value text-danger">{{analysisResults.commitsWithKeywords.length}}</div>
                     <div class="stat-label">Fix Commits</div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6">
+            <div class="col-md-4 col-sm-6">
                 <div class="stat-card text-center">
                     <i class="bi bi-percent text-warning" style="font-size: 2rem;"></i>
                     <div class="stat-value text-warning">{{defectFixRatePercent}}%</div>
@@ -276,7 +276,7 @@
         <!-- Code Quality Metrics Section -->
         <h2 class="section-header"><i class="bi bi-shield-check"></i> Code Quality Metrics</h2>
         <div class="row">
-            <div class="col-md-3 col-sm-6">
+            <div class="col-md-4 col-sm-6">
                 <div class="quality-card" id="code-stability-card">
                     <h5>Code Stability Index</h5>
                     <div class="quality-value" id="code-stability-value">{{codeStabilityPercent}}%</div>
@@ -284,7 +284,7 @@
                 </div>
             </div>
             
-            <div class="col-md-3 col-sm-6">
+            <div class="col-md-4 col-sm-6">
                 <div class="quality-card" id="hotfix-index-card">
                     <h5>Hotfix Index</h5>
                     <div class="quality-value" id="hotfix-index-value">{{hotfixPercentageRounded}}%</div>
@@ -292,7 +292,7 @@
                 </div>
             </div>
             
-            <div class="col-md-3 col-sm-6">
+            <div class="col-md-4 col-sm-6">
                 <div class="quality-card" id="hotspot-concentration-card">
                     <h5>Hotspot Concentration</h5>
                     <div class="quality-value" id="hotspot-concentration-value">{{hotspotConcentrationRounded}}%</div>
