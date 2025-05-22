@@ -14,11 +14,20 @@ const { generateFixRatePieChart } = require('./charts/fixRatePieChart');
  *                              Expected to have `output` and `format`.
  */
 async function generateHtmlReport(analysisResults, cliOptions = {}) {
+  if (!analysisResults) {
+    throw new Error('Analysis results are required');
+  }
+
   const outputDir = cliOptions.output || path.join(process.cwd(), 'git-qa-report');
   const reportFilename = 'report.html';
   const outputPath = path.join(outputDir, reportFilename);
+  console.log('Output directory:', outputDir);
+  console.log('Report file path:', outputPath);
 
   try {
+    if (!outputDir) {
+      throw new Error('Output directory path is required');
+    }
     await fs.mkdir(outputDir, { recursive: true });
 
     // Generate charts
@@ -54,11 +63,25 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
     }
 
     // Use improved template
-    const templatePath = path.join(__dirname, 'templates', 'html', 'improved-report-template.html');
+    const templatePath = path.resolve(__dirname, 'templates', 'html', 'improved-report-template.html');
+    console.log('Loading template from:', templatePath);
     const templateContent = await fs.readFile(templatePath, 'utf-8');
+    if (!templateContent) {
+        throw new Error(`Template file ${templatePath} appears to be empty`);
+    }
     
     // Register Handlebars helpers
-    handlebars.registerHelper('gt', (a, b) => a > b);
+    handlebars.registerHelper({
+      gt: (a, b) => a > b,
+      basename: (filepath) => filepath ? path.basename(filepath) : '',
+      dirname: (filepath) => filepath ? path.dirname(filepath) : '',
+      formatPercent: (value) => typeof value === 'number' ? value.toFixed(1) + '%' : '0%',
+      getRiskLevel: (count) => {
+        if (count > 10) return { class: 'text-danger', text: 'High' };
+        if (count > 5) return { class: 'text-warning', text: 'Medium' };
+        return { class: 'text-success', text: 'Low' };
+      }
+    });
 
     const compiledTemplate = handlebars.compile(templateContent);
     const processedData = JSON.parse(JSON.stringify(analysisResults));
@@ -150,11 +173,11 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
     }
 
     // Add chart image paths for the template
-    processedData.commitFrequencyChart = chartImageRelPath;
-    processedData.topFilesChart = topFilesChartRelPath;
-    processedData.fixTrendChart = fixTrendChartRelPath;
-    processedData.fixRatePieChart = fixRatePieChartRelPath;
-    processedData.topFixFilesChart = topFixFilesChartRelPath;
+    processedData.commitFrequencyChart = chartImageRelPath || null;
+    processedData.topFilesChart = topFilesChartRelPath || null;
+    processedData.fixTrendChart = fixTrendChartRelPath || null;
+    processedData.fixRatePieChart = fixRatePieChartRelPath || null;
+    processedData.topFixFilesChart = topFixFilesChartRelPath || null;
 
     // Add topHotfixFiles if available
     if (analysisResults.topHotfixFiles) {
@@ -165,8 +188,66 @@ async function generateHtmlReport(analysisResults, cliOptions = {}) {
     if (cliOptions.repoName) {
       processedData.repoName = cliOptions.repoName;
     } else {
-      processedData.repoName = '';
+      try {
+        processedData.repoName = path.basename(process.cwd());
+      } catch (error) {
+        processedData.repoName = 'Unknown Repository';
+      }
     }
+
+    // Add ratio calculations
+    if (analysisResults.fixMerges && analysisResults.hotfixMerges) {
+      const totalFixRelated = analysisResults.fixMerges + analysisResults.hotfixMerges;
+      processedData.fixToHotfixRatio = totalFixRelated > 0 
+        ? (analysisResults.fixMerges / totalFixRelated) * 100 
+        : 0;
+    }
+
+    // Add file analysis data
+    if (analysisResults.topFixFiles) {
+      console.log('Processing fix files data:');
+      console.log('Input topFixFiles:', analysisResults.topFixFiles);
+      processedData.topFixFiles = analysisResults.topFixFiles.slice(0, 10);
+      processedData.totalFixFiles = analysisResults.totalFixFiles || 0;
+      console.log('Processed topFixFiles:', processedData.topFixFiles);
+      console.log('Total fix files:', processedData.totalFixFiles);
+    }
+
+    if (analysisResults.topHotfixFiles) {
+      console.log('Processing hotfix files data:');
+      console.log('Input topHotfixFiles:', analysisResults.topHotfixFiles);
+      processedData.topHotfixFiles = analysisResults.topHotfixFiles.slice(0, 10);
+      processedData.totalHotfixFiles = analysisResults.totalHotfixFiles || 0;
+      console.log('Processed topHotfixFiles:', processedData.topHotfixFiles);
+      console.log('Total hotfix files:', processedData.totalHotfixFiles);
+    } else {
+      console.log('No hotfix files data found in analysisResults');
+    }
+
+    // Calculate percentage of all files that have been fixed
+    if (processedData.totalFixFiles && processedData.uniqueFilesCount) {
+      processedData.fixFilePercentage = Number(
+        ((processedData.totalFixFiles / processedData.uniqueFilesCount) * 100).toFixed(1)
+      );
+    } else {
+      processedData.fixFilePercentage = 0;
+    }
+
+    // Calculate fix-to-hotfix file ratio
+    if (processedData.totalFixFiles || processedData.totalHotfixFiles) {
+      const totalAffectedFiles = (processedData.totalFixFiles || 0) + (processedData.totalHotfixFiles || 0);
+      processedData.fixToHotfixFileRatio = totalAffectedFiles > 0 
+        ? Number(((processedData.totalFixFiles || 0) / totalAffectedFiles * 100).toFixed(1))
+        : 0;
+    } else {
+      processedData.fixToHotfixFileRatio = 0;
+    }
+
+    // Add risk analysis
+    processedData.highRiskFiles = (processedData.topFixFiles || [])
+      .filter(file => file.count > 10).length;
+    processedData.mediumRiskFiles = (processedData.topFixFiles || [])
+      .filter(file => file.count > 5 && file.count <= 10).length;
 
     // Apply data to the template
     const htmlContent = compiledTemplate({ analysisResults: processedData, ...processedData });

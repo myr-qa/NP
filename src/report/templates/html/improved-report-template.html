@@ -270,13 +270,7 @@
                     <div class="stat-label">Defect-Fix Rate</div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="stat-card text-center">
-                    <i class="bi bi-files text-success" style="font-size: 2rem;"></i>
-                    <div class="stat-value text-success" id="unique-files-count">{{uniqueFilesCount}}</div>
-                    <div class="stat-label">Unique Files Changed</div>
-                </div>
-            </div>
+
         </div>
         
         <!-- Code Quality Metrics Section -->
@@ -306,30 +300,12 @@
                 </div>
             </div>
             
-            <div class="col-md-3 col-sm-6">
-                <div class="quality-card" id="consistency-index-card">
-                    <h5>Commit Consistency</h5>
-                    <div class="quality-value" id="commit-consistency-value">{{commitConsistencyRounded}}</div>
-                    <div class="quality-description">Consistency of commit frequency (higher is better).</div>
-                </div>
-            </div>
         </div>
         
         <!-- Commit Trends and Analysis Section -->
         <h2 class="section-header"><i class="bi bi-graph-up"></i> Commit Trends and Analysis</h2>
         <div class="row">
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <h5 class="mb-4">Commit Frequency</h5>
-                    <div id="commit-frequency-chart">
-                        {{#if analysisResults.commitFrequencyChart}}
-                            <img src="{{analysisResults.commitFrequencyChart}}" alt="Commit Frequency Chart" style="max-width:100%;height:auto;" />
-                        {{else}}
-                            <div class="alert alert-info">No commit frequency data available</div>
-                        {{/if}}
-                    </div>
-                </div>
-            </div>
+
             <div class="col-md-6">
                 <div class="chart-container">
                     <h5 class="mb-4">Fix/Hotfix Trend</h5>
@@ -344,65 +320,12 @@
             </div>
         </div>
         
-        <div class="row">
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <h5 class="mb-4">Defect-Fix Distribution</h5>
-                    <div id="fix-rate-pie-chart">
-                        {{#if analysisResults.fixRatePieChart}}
-                            <img src="{{analysisResults.fixRatePieChart}}" alt="Defect-Fix Rate Pie Chart" style="max-width:100%;height:auto;" />
-                        {{else}}
-                            <div class="alert alert-info">No fix rate data available</div>
-                        {{/if}}
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <h5 class="mb-4">Fix Types Distribution</h5>
-                    <div id="keyword-distribution">
-                        <div class="d-flex justify-content-around mb-4">
-                            {{#each analysisResults.keywordCounts}}
-                                <div class="text-center">
-                                    <h4>{{@key}}</h4>
-                                    <h2>{{this}}</h2>
-                                </div>
-                            {{/each}}
-                        </div>
-                        
-                        <div class="progress" style="height: 30px;">
-                            {{#each analysisResults.keywordCounts}}
-                                {{#if this}}
-                                    <div class="progress-bar keyword-{{@key}}" role="progressbar" 
-                                         style="width: {{lookup ../keywordPercentages @key}}%;" 
-                                         aria-valuenow="{{this}}" 
-                                         aria-valuemin="0" 
-                                         aria-valuemax="100">
-                                        {{@key}}
-                                    </div>
-                                {{/if}}
-                            {{/each}}
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
         
         <!-- File Analysis Section -->
         <h2 class="section-header"><i class="bi bi-file-earmark-code"></i> File Analysis</h2>
         <div class="row">
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <h5 class="mb-4">Top Changed Files</h5>
-                    <div id="top-files-chart">
-                        {{#if analysisResults.topFilesChart}}
-                            <img src="{{analysisResults.topFilesChart}}" alt="Top Changed Files Chart" style="max-width:100%;height:auto;" />
-                        {{else}}
-                            <div class="alert alert-info">No top files data available</div>
-                        {{/if}}
-                    </div>
-                </div>
-            </div>
+            
             <div class="col-md-6">
                 <div class="chart-container">
                     <h5 class="mb-4">Top Files in Fix/Hotfix Commits</h5>
@@ -418,16 +341,18 @@
         </div>
         
         <!-- Potential Problem Areas Section -->
-        <h2 class="section-header"><i class="bi bi-exclamation-triangle"></i> Potential Problem Areas</h2>
+        <h2 class="section-header"><i class="bi bi-exclamation-triangle"></i> Fix and Hotfix Analysis</h2>
         <div class="row">
             <div class="col-md-6">
                 <div class="chart-container">
-                    <h5 class="mb-4">High-Risk Files</h5>
+                    <h5 class="mb-4">Regular Fix Files <small class="text-muted">(Top 10 most frequently fixed files)</small></h5>
+                    <div class="text-muted mb-2">Total files with fixes: {{analysisResults.totalFixFiles}}</div>
                     <div class="table-container">
                         <table class="table table-hover">
                             <thead class="table-primary">
                                 <tr>
-                                    <th>File</th>
+                                    <th>File Name</th>
+                                    <th>Path</th>
                                     <th>Fix Count</th>
                                     <th>Risk Level</th>
                                 </tr>
@@ -435,8 +360,9 @@
                             <tbody>
                                 {{#each analysisResults.topFixFiles}}
                                     <tr>
-                                        <td>{{this.file}}</td>
-                                        <td>{{this.count}}</td>
+                                        <td>{{basename this.file}}</td>
+                                        <td><small class="text-muted">{{dirname this.file}}</small></td>
+                                        <td><span class="badge bg-primary">{{this.count}}</span></td>
                                         <td>
                                             {{#if (gt this.count 10)}}
                                               <div class="text-danger fw-bold mb-1">High</div>
@@ -456,45 +382,44 @@
             
             <div class="col-md-6">
                 <div class="chart-container">
-                    <h5 class="mb-4">Hotfix Affected Files</h5>
+                    <h5 class="mb-4">Hotfix Files (Urgent) <small class="text-muted">(Top 10 most frequently hotfixed files)</small></h5>
+                    <div class="text-muted mb-2">Total files with hotfixes: {{analysisResults.totalHotfixFiles}}</div>
                     <div class="table-container">
                         {{#if analysisResults.topHotfixFiles}}
                             <table class="table table-hover">
                                 <thead class="table-danger">
                                     <tr>
-                                        <th>File</th>
+                                        <th>File Name</th>
+                                        <th>Path</th>
                                         <th>Hotfix Count</th>
+                                        <th>Impact</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {{#each analysisResults.topHotfixFiles}}
                                         <tr>
-                                            <td>{{this.file}}</td>
+                                            <td>{{basename this.file}}</td>
+                                            <td><small class="text-muted">{{dirname this.file}}</small></td>
+                                            <td><span class="badge bg-danger">{{this.count}}</span></td>
                                             <td>
-                                                <span class="badge bg-danger">{{this.count}}</span>
+                                                {{#if (gt this.count 5)}}
+                                                    <div class="text-danger fw-bold mb-1">Critical</div>
+                                                {{else if (gt this.count 2)}}
+                                                    <div class="text-warning fw-bold mb-1">High</div>
+                                                {{else}}
+                                                    <div class="text-warning fw-bold mb-1">Moderate</div>
+                                                {{/if}}
                                             </td>
                                         </tr>
                                     {{/each}}
                                 </tbody>
                             </table>
                         {{else}}
-                            <div class="alert alert-info">No hotfix data available</div>
+                            <div class="alert alert-success">No hotfix data - Good job!</div>
                         {{/if}}
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Commit Frequency Section -->
-        <h2 class="section-header"><i class="bi bi-bar-chart"></i> Commit Frequency</h2>
-        <div class="chart-container">
-            {{#if analysisResults.commitFrequency}}
-                <div id="commit-frequency-chart">
-                    <img src="{{analysisResults.commitFrequencyChart}}" alt="Commit Frequency Chart" style="max-width:100%;height:auto;" />
-                </div>
-            {{else}}
-                <div class="alert alert-info">No commit frequency data available</div>
-            {{/if}}
         </div>
 
         <!-- Defect-Fix Rate Section -->
@@ -588,15 +513,7 @@
             }
             
             // Commit Consistency Card coloring
-            const consistencyValue = parseFloat(document.getElementById('commit-consistency-value').textContent);
-            const consistencyCard = document.getElementById('consistency-index-card');
-            if (consistencyValue >= 0.7) {
-                consistencyCard.className = 'quality-card good';
-            } else if (consistencyValue >= 0.4) {
-                consistencyCard.className = 'quality-card warning';
-            } else {
-                consistencyCard.className = 'quality-card poor';
-            }
+            // Removed unused consistency card logic
         });
         
         // Set progress bar colors for keywords
@@ -619,4 +536,3 @@
     </script>
 </body>
 </html>
-    

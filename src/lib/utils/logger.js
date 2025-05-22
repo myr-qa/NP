@@ -1,4 +1,4 @@
-let isLoggingEnabled = true;
+let isLoggingEnabled = false;
 
 /**
  * Enables logging.

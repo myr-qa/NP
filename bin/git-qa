@@ -4,7 +4,8 @@ const { program } = require('commander');
 const packageJson = require('../package.json');
 const { isGitRepository } = require('../src/lib/git/validation');
 const { getCommits } = require('../src/lib/git/log');
-const { analyzeCommits, analyzeHotfixFilesAuto } = require('../src/lib/analysis/engine');
+const { analyzeCommits } = require('../src/lib/analysis/engine');
+const { analyzeHotFilesFast } = require('../src/lib/analysis/analyzeHotFilesFast');
 const { generateConsoleReport } = require('../src/report/consoleReporter');
 const { generateHtmlReport } = require('../src/report/htmlReporter');
 const { generateCsvReport } = require('../src/report/csvReporter');
@@ -40,9 +41,10 @@ program
     generateConsoleReport(analysisResults, options);
 
     if (options.format === 'html') {
-      // Also analyze hotfix files and add to report data
-      const { topHotfixFiles } = await analyzeHotfixFilesAuto('remotes/origin/master');
-      analysisResults.topHotfixFiles = topHotfixFiles;
+      // Use the new fast analysis for fixes and hotfixes
+      const targetBranch = options.branches ? options.branches.split(',')[0] : 'HEAD';
+      const hotFileResults = await analyzeHotFilesFast(targetBranch);
+      Object.assign(analysisResults, hotFileResults);
       await generateHtmlReport(analysisResults, options);
     } else if (options.format === 'csv') {
       await generateCsvReport(analysisResults, options);
@@ -56,11 +58,12 @@ program
 program
   .command('hotfix-files')
   .description('Analyze files most frequently affected by hotfix merges into master')
-  .option('-b, --branch <branch>', 'Target branch to analyze (default: remotes/origin/master)', 'remotes/origin/master')
+  .option('-b, --branch <branch>', 'Target branch to analyze (default: master)', 'master')
   .action(async (options) => {
-    const branch = options.branch || 'remotes/origin/master';
+    const branch = options.branch || 'master';
     console.log(`Analyzing hotfix merges into ${branch}...`);
-    const { topHotfixFiles, hotfixFiles, hotfixCommits } = await analyzeHotfixFilesAuto(branch);
+    const results = await analyzeHotFilesFast(branch);
+    const { topHotfixFiles, hotfixMerges, totalHotfixFiles } = results;
     // console.log('\nDEBUG: Hotfix merge messages and files:');
     hotfixCommits.forEach((merge, i) => {
       // console.log(`\n${i + 1}. ${merge.hash} | ${merge.message}`);

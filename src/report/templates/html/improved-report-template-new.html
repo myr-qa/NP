@@ -1,0 +1,58 @@
+<!-- ...existing code... -->
+<h2 class="section-header"><i class="bi bi-speedometer2"></i> Fix vs Hotfix Analysis</h2>
+<div class="row">
+  <div class="col-md-6">
+    <div class="chart-container">
+      <h5 class="mb-4">Regular Fix Files <small class="text-muted">(Top 10 most frequently fixed files)</small></h5>
+      <div class="text-muted mb-2">Total files with fixes: {{totalFixFiles}}</div>
+      <div class="table-container">
+        <table class="table table-hover">
+          <thead class="table-primary">
+            <tr>
+              <th>File Name</th>
+              <th>Path</th>
+              <th>Fix Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each topFixFiles}}
+              <tr>
+                <td>{{basename this.file}}</td>
+                <td><small class="text-muted">{{dirname this.file}}</small></td>
+                <td><span class="badge bg-primary">{{this.count}}</span></td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="chart-container">
+      <h5 class="mb-4">Hotfix Files (Urgent) <small class="text-muted">(Top 10 most frequently hotfixed files)</small></h5>
+      <div class="text-muted mb-2">Total files with hotfixes: {{totalHotfixFiles}}</div>
+      <div class="table-container">
+        <table class="table table-hover">
+          <thead class="table-danger">
+            <tr>
+              <th>File Name</th>
+              <th>Path</th>
+              <th>Hotfix Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each topHotfixFiles}}
+              <tr>
+                <td>{{basename this.file}}</td>
+                <td><small class="text-muted">{{dirname this.file}}</small></td>
+                <td><span class="badge bg-danger">{{this.count}}</span></td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ...existing code... -->
